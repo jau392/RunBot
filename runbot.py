@@ -13,7 +13,7 @@ import sys
 import cs_logging
 from cs_logging import logmsg, logerr, logheader, logwarning, logsuccess, print_console_note
 import cs_jira_requests
-import cs_runbot
+import runbot_library
 import cs_util
 
 jira = cs_jira_requests.JiraRequest()
@@ -23,18 +23,18 @@ command_type = None # to be used in creating RunbotCommand object
 
 # Set defaults
 logheader("runbot.py -> Execution begins")
-is_prod_run = cs_runbot.is_prod_run()
+is_prod_run = runbot_library.is_prod_run()
 logmsg("runbot.py -> Updating existing Jira status in mis_reports.jobs.RUNJOB_REQUEST_T")
-cs_runbot.sync_jira_status_for_outstanding_requests()    
+runbot_library.sync_jira_status_for_outstanding_requests()    
     
 ##### Step 1: Get queue from mis_reports.jobs.RUNJOB_REQUEST_T and validate jira ID #####
-row_to_execute = cs_runbot.get_next_row_dict()
+row_to_execute = runbot_library.get_next_row_dict()
 if not row_to_execute:
     logmsg("runbot.py -> ========= NO RUNJOB ITEMS FOUND =========")
     logmsg("runbot.py -> >> MIS_Reports.jobs.RUNJOB_REQUEST_T has no outstanding rows with status_cd = 'NEW'. Exiting...")
     sys.exit(0)
     
-runbot_id, jira_issue_id, job_name, runbot_cmd, artifact_id, log_run_id, error_snippet, job_type = cs_runbot.get_required_row_values(row_to_execute)
+runbot_id, jira_issue_id, job_name, runbot_cmd, artifact_id, log_run_id, error_snippet, job_type = runbot_library.get_required_row_values(row_to_execute)
 is_rerun = (job_type in ['RERUN_REPORT', 'RELOAD_TABLE'])
 
 if not runbot_cmd:
@@ -91,13 +91,13 @@ jira.add_comment(jira_issue_id, "Runbot execution of '{0}'{1} begins.".format(ru
 if not is_rerun:
     jira.update_story_status(jira_issue_id, "IN PROGRESS")
 
-status_change_to_running = cs_runbot.update_status_cd_for_row(runbot_id, 'RUNNING')
+status_change_to_running = runbot_library.update_status_cd_for_row(runbot_id, 'RUNNING')
 if not status_change_to_running:
     logerr("runbot.py -> Failed to update status_cd to 'RUNNING' on MSSQL")
 
 
 ##### Step 4: Initalize and run the RunbotCommand object #####
-RunbotCommand = cs_runbot.RunbotCommand(runbot_cmd, runbot_id, command_type=command_type)
+RunbotCommand = runbot_library.RunbotCommand(runbot_cmd, runbot_id, command_type=command_type)
 RunbotCommand.process_runbot_command()
 if not RunbotCommand.is_successful:
     final_status_cd, is_failure = 'ERROR', 1
@@ -105,17 +105,17 @@ if not RunbotCommand.is_successful:
 ##### Log CTM output file if command is non-runjob (e.g. CTL, OTS, Release, etc.)
 if not RunbotCommand.is_runjob:
     runbot_log_contents = cs_util.get_unix_command_output(f"cat {runbot_log}")
-    cs_runbot.log_output_to_database(runbot_cmd, runbot_log, runbot_log_contents, is_failure, artifact_id, runbot_id)
+    runbot_library.log_output_to_database(runbot_cmd, runbot_log, runbot_log_contents, is_failure, artifact_id, runbot_id)
 
 
 ##### Step 5: Call update sproc to update 'status_cd' to 'COMPLETE' or 'ERROR' #####
-status_change_endstate = cs_runbot.update_status_cd_for_row(runbot_id, final_status_cd)
+status_change_endstate = runbot_library.update_status_cd_for_row(runbot_id, final_status_cd)
 if not status_change_endstate:
     logerr(f"runbot.py -> Failed to update status_cd to '{final_status_cd}' on MSSQL")
 
 ##### Getting updated runbot row to comment the log id
-runjob_row = cs_runbot.get_next_row_dict(runbot_id)
-runbot_id, jira_issue_id, job_name, runbot_cmd, artifact_id, log_run_id, error_snippet, job_type = cs_runbot.get_required_row_values(runjob_row)
+runjob_row = runbot_library.get_next_row_dict(runbot_id)
+runbot_id, jira_issue_id, job_name, runbot_cmd, artifact_id, log_run_id, error_snippet, job_type = runbot_library.get_required_row_values(runjob_row)
 
 
 ##### Step 6: Comment on Jira story with run results #####
@@ -136,7 +136,7 @@ if error_snippet:
 ##### Step 7: Update Jira status for outstanding requests if not rerun, then terminate execution #####
 if not is_rerun:
     jira.update_story_status(jira_issue_id, "Failed" if is_failure else "Done")
-    cs_runbot.sync_jira_status_for_outstanding_requests(jira_issue_id)
+    runbot_library.sync_jira_status_for_outstanding_requests(jira_issue_id)
 
 finishup_msg = f"runbot.py -> Runbot execution ends. Status='{final_status_cd}'"
 logsuccess(finishup_msg) if RunbotCommand.is_successful else logerr(finishup_msg)
