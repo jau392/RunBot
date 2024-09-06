@@ -16,26 +16,6 @@ import cs_environment as env
 from cs_logging import logmsg, logwarning, logerr, print_console_note
 
 
-def run_command_python(command, pipe_output=True):
-    """
-    INPUT: Unix command (str), pipe_output (bool, optional)
-           - Variable pipe_output can toggle between piping or discarding stdout/stderr
-    
-    OUTPUT: failed (bool)
-    """
-    logmsg("cs_util.py -> Executing Python command (output " + ("piped)" if pipe_output else "directed to NULL)"))
-    failed = False
-    proc = subprocess.Popen(command,
-                            shell=True,
-                            stdout=(subprocess.PIPE if pipe_output else subprocess.DEVNULL),
-                            stderr=(subprocess.PIPE if pipe_output else subprocess.DEVNULL)
-                            )
-    proc.wait()
-    if proc.returncode != 0:
-        failed = True
-    return failed
-
-
 async def run_command_async(command, results_dict={}):
     """
     INPUT: Unix command (str), results_dict (dict, optional)
@@ -236,5 +216,22 @@ def get_srg_runjob_command(job_nm):
     except Exception as e:
         logerr(f"cs_artifact.get_srg_runjob_command() -> Threw exception:\n{e}")
         return
-cs_util.txt
-Displaying cs_util.txt.
+
+def run_command_python(command, pipe_output=True):
+    """
+    INPUT: Unix command (str), pipe_output (bool, optional)
+           - Variable pipe_output can toggle between piping or discarding stdout/stderr
+    
+    OUTPUT: failed (bool)
+    """
+    logmsg("cs_util.py -> Executing Python command (output " + ("piped)" if pipe_output else "directed to NULL)"))
+    failed = False
+    proc = subprocess.Popen(command,
+                            shell=True,
+                            stdout=(subprocess.PIPE if pipe_output else subprocess.DEVNULL),
+                            stderr=(subprocess.PIPE if pipe_output else subprocess.DEVNULL)
+                            )
+    proc.wait()
+    if proc.returncode != 0:
+        failed = True
+    return failed
