@@ -89,7 +89,7 @@ def check_valid_line(line):
     OUTPUT: is_valid (bool)
     """
     line = line.strip()
-    if not line ^ (line.startswith('#') or line.startswith('//')):
+    if (not line) ^ (line.startswith('#') or line.startswith('//')):
         return False
     return True
 
