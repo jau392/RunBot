@@ -147,6 +147,18 @@ def create_directory_if_not_extant(path):
     return
 
 
+def check_valid_line(line):
+    """
+    INPUT: line (str), Checks if line is empty or commented
+    
+    OUTPUT: is_valid (bool)
+    """
+    line = line.strip()
+    if not line ^ (line.startswith('#') or line.startswith('//')):
+        return False
+    return True
+
+
 def check_ctl_for_runjob(command, silent=False):
     """
     INPUT: command (str), silent (bool, optional)
@@ -159,9 +171,8 @@ def check_ctl_for_runjob(command, silent=False):
         logmsg("cs_util.py -> Parsing CTL for runjob command(s)...")
     runjobs_list = []
     with open(command) as f:
-        for line in f.readlines():
-            line = line.strip()
-            if "runjob" in line and not line.startswith('#'):
+        for line in list(map(str.strip, f.readlines())):
+            if "runjob " in line and check_valid_line(line):
                 logmsg(f"CTL Contains Runjob: {line}")
                 runjobs_list.append(line)
                 
@@ -170,17 +181,6 @@ def check_ctl_for_runjob(command, silent=False):
     if len(runjobs_list) > 1:
         logwarning(f"CTL contains {len(runjobs_list)} runjobs; executing plain CTL. View log files for each runjob individually.")
     return command
-
-
-def check_valid_line(line):
-    """
-    INPUT: line (str), Checks if line is empty or commented
-    
-    OUTPUT: is_valid (bool)
-    """
-    if not line.strip() or line.startswith('#') or line.startswith('//'):
-        return False
-    return True
     
     
 def get_srg_runjob_command(job_nm):
@@ -191,7 +191,7 @@ def get_srg_runjob_command(job_nm):
     returns: runjob_cmd (str)
     """
     # If job_nm is passed in CTL format, scrub it back to expected format
-    job_nm = f"mis_{job_nm.split('/')[-1].split('praa')[-1].split('.ctl')[0]}_00_c"
+    job_nm = f"mis_{job_nm.split('/')[-1].split('praa')[-1].removesuffix('.ctl')}_00_c"
     
     logmsg(f"cs_artifact -> Getting runjob cmd for {job_nm} from MIS_Reports.dbo.ARTFCT_DETAILS_VALUES_T")
     
