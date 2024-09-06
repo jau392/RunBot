@@ -69,71 +69,6 @@ def get_unix_command_output(unix_cmd):
         return ""
         
     return output.decode('utf-8').strip()
-
-
-def publish_to_runjob(publish_cmd):
-    """
-    INPUT: publish_cmd (str), which is any command such as 'publish RESQ-195'
-           - Used to find the logfile for a 'publish' command
-    
-    OUTPUT: the runjob command corresponding to the input, or None if no CFG was found
-    """
-    dir_name = f"{'/NAS/mis/jobs' if env.current_user_is_production() else os.getenv('WORKING_JOBS_DIR')}/all/publish/scpt"
-    pub_name, pub_id = publish_cmd.split()[1].lower().split('-')
-    # Option 1: with hyphen
-    possible_cfg = f"{dir_name}/{pub_name}-{pub_id}_publish.cfg"
-    if os.path.exists(possible_cfg):
-        return f"runjob all_publish {pub_name}-{pub_id}_publish"
-    
-    # Option 2: without hyphen
-    possible_cfg = ''.join(possible_cfg.split('-'))
-    if os.path.exists(possible_cfg):
-        return f"runjob all_publish {pub_name}{pub_id}_publish"
-    # If neither was found, return None
-    return
-
-
-def get_runjob_logfile(runjob_cmd):
-    """
-    INPUT: runjob_cmd (str), which is any runjob runjob_cmd
-    
-    OUTPUT: result (str) of the runjob_cmd
-    """
-    try:
-        # First, check if runjob_cmd starts with "publish ??". In this case, it needs to be translated to "runjob all_publish ??_publish"
-        if runjob_cmd.startswith('publish'):
-            runjob_cmd = publish_to_runjob(runjob_cmd)
-            if not runjob_cmd:
-                raise Exception("No CFG file matching the provided report number found")
-                
-        # Main code
-        is_srg = (runjob_cmd.split()[1] == "srg")
-        identifier = runjob_cmd.split()[2]
-        is_prod = env.current_machine_is_production_server()
-        base_dir = "/NAS/mis/" if is_prod else "/NAS/mis/tmp/_"
-        base_dir += "srg" if is_srg else "jobs/"
-        
-        # Prod (CS_PROD=P) vs non-prod distinction in logfile name and/or path
-        if is_prod:
-            if is_srg:
-                get_srg_name_command = f"ls -d {base_dir}/*/ | grep {identifier}"
-                srg_name = get_unix_command_output(get_srg_name_command).split('/NAS/mis/srg/')[1][:-1]
-                # Wrap SRG name in single quotes, as it contains NBSP
-                return f"/NAS/mis/srg/'{srg_name}'/logs/logfile.txt"
-            else:
-                pieces = runjob_cmd.split()[1].split('_')
-                base_dir += f"{pieces[0]}/{pieces[1]}/log"
-        
-        else:
-            if not is_srg:
-                base_dir += runjob_cmd.split()[1]
-        
-        logfile_command = f"ls -ltr {base_dir}/{identifier}* | tail -1 " + "| awk '{print $NF}'"
-        return get_unix_command_output(logfile_command)
-    
-    except Exception as err:
-        logerr(f"cs_util.get_runjob_logfile({runjob_cmd}) -> Threw exception:\n{err}")
-        return "<LOGFILE RETRIEVAL ERROR>"
     
 
 def create_directory_if_not_extant(path):
@@ -235,3 +170,68 @@ def run_command_python(command, pipe_output=True):
     if proc.returncode != 0:
         failed = True
     return failed
+
+
+def publish_to_runjob(publish_cmd):
+    """
+    INPUT: publish_cmd (str), which is any command such as 'publish RESQ-195'
+           - Used to find the logfile for a 'publish' command
+    
+    OUTPUT: the runjob command corresponding to the input, or None if no CFG was found
+    """
+    dir_name = f"{'/NAS/mis/jobs' if env.current_user_is_production() else os.getenv('WORKING_JOBS_DIR')}/all/publish/scpt"
+    pub_name, pub_id = publish_cmd.split()[1].lower().split('-')
+    # Option 1: with hyphen
+    possible_cfg = f"{dir_name}/{pub_name}-{pub_id}_publish.cfg"
+    if os.path.exists(possible_cfg):
+        return f"runjob all_publish {pub_name}-{pub_id}_publish"
+    
+    # Option 2: without hyphen
+    possible_cfg = ''.join(possible_cfg.split('-'))
+    if os.path.exists(possible_cfg):
+        return f"runjob all_publish {pub_name}{pub_id}_publish"
+    # If neither was found, return None
+    return
+
+
+def get_runjob_logfile(runjob_cmd):
+    """
+    INPUT: runjob_cmd (str), which is any runjob runjob_cmd
+    
+    OUTPUT: result (str) of the runjob_cmd
+    """
+    try:
+        # First, check if runjob_cmd starts with "publish ??". In this case, it needs to be translated to "runjob all_publish ??_publish"
+        if runjob_cmd.startswith('publish'):
+            runjob_cmd = publish_to_runjob(runjob_cmd)
+            if not runjob_cmd:
+                raise Exception("No CFG file matching the provided report number found")
+                
+        # Main code
+        is_srg = (runjob_cmd.split()[1] == "srg")
+        identifier = runjob_cmd.split()[2]
+        is_prod = env.current_machine_is_production_server()
+        base_dir = "/NAS/mis/" if is_prod else "/NAS/mis/tmp/_"
+        base_dir += "srg" if is_srg else "jobs/"
+        
+        # Prod (CS_PROD=P) vs non-prod distinction in logfile name and/or path
+        if is_prod:
+            if is_srg:
+                get_srg_name_command = f"ls -d {base_dir}/*/ | grep {identifier}"
+                srg_name = get_unix_command_output(get_srg_name_command).split('/NAS/mis/srg/')[1][:-1]
+                # Wrap SRG name in single quotes, as it contains NBSP
+                return f"/NAS/mis/srg/'{srg_name}'/logs/logfile.txt"
+            else:
+                pieces = runjob_cmd.split()[1].split('_')
+                base_dir += f"{pieces[0]}/{pieces[1]}/log"
+        
+        else:
+            if not is_srg:
+                base_dir += runjob_cmd.split()[1]
+        
+        logfile_command = f"ls -ltr {base_dir}/{identifier}* | tail -1 " + "| awk '{print $NF}'"
+        return get_unix_command_output(logfile_command)
+    
+    except Exception as err:
+        logerr(f"cs_util.get_runjob_logfile({runjob_cmd}) -> Threw exception:\n{err}")
+        return "<LOGFILE RETRIEVAL ERROR>"
