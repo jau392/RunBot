@@ -11,7 +11,7 @@ import shutil
 
 import cs_db
 import cs_jira_requests
-import cs_util
+import unix_utility
 from cs_environment import current_user_is_production, get_mssql_instance, is_full_production_run
 from cs_logging import logmsg, logerr, logwarning, logsuccess
 
@@ -33,7 +33,7 @@ class RunbotCommand:
     def __execute_cmd(self):
         logmsg(f"{script_arrow} Executing: {self.command}")
         # run_command_python() returns True if there was a failure
-        if cs_util.run_command_python(self.command, pipe_output=False):
+        if unix_utility.run_command_python(self.command, pipe_output=False):
             self.is_successful = False
             if not self.is_runjob:
                 # If CTL, log what specific command failed. Commands located in runjobs_list[]
