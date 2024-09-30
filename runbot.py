@@ -11,10 +11,9 @@
 import os
 import sys
 import cs_logging
-from cs_logging import logmsg, logerr, logheader, logwarning, logsuccess, print_console_note
-import cs_jira_requests
+
 import runbot_library
-import cs_util
+# OTHER IMPORTS REDACTED #
 
 jira = cs_jira_requests.JiraRequest()
 final_status_cd, is_failure = 'COMPLETE', 0
@@ -124,10 +123,10 @@ jira.add_comment(jira_issue_id, "Runbot execution of '{0}'{1} ends. \nStatus: *{
 
 # noting log location based on job_type
 if is_rerun:
-    jira.add_comment(jira_issue_id, f"Log Location: https://artifacttracker.schwab.com/artifacts/summary?id={artifact_id}&tab=Logs&runId={log_run_id}&lineCount=10")
+    jira.add_comment(jira_issue_id, f"Log Location: <REDACTED>")
 
 if job_type == "":
-    jira.add_comment(jira_issue_id, "Full logfile available at: https://gdtws.schwab.com/ReleaseIntake/RunbotQueueMonitor")
+    jira.add_comment(jira_issue_id, "Full logfile available at: <REDACTED>")
 
 if error_snippet:
     jira.add_comment(jira_issue_id, "{{color:red}}Error Message: {}{{color}}".format(error_snippet))
@@ -142,5 +141,3 @@ finishup_msg = f"runbot.py -> Runbot execution ends. Status='{final_status_cd}'"
 logsuccess(finishup_msg) if RunbotCommand.is_successful else logerr(finishup_msg)
 print_console_note(f"Logfile available at: {runbot_log}")
 sys.exit(0)
-runbot.txt
-Displaying runbot.txt.
